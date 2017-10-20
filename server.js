@@ -11,6 +11,7 @@ const twitterClient = require('./clients/twitter');
 const PORT = process.env.PORT || 8080,
   HOST = process.env.HOST_NAME || '0.0.0.0';
 
+// TODO
 // const redisClient = redis.createClient(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 
 const app = express();

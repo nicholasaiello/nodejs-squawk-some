@@ -8,11 +8,9 @@ const _parseStatuses = (statuses) => (
     return {
       id: x.id,
       text: x.text,
-      user: {
-        name: x.user.name,
-        screen_name: x.user.screen_name,
-        profile_img: x.user.profile_image_url_https
-      },
+      user_name: x.user.name,
+      user_screen_name: x.user.screen_name,
+      user_profile_img: x.user.profile_image_url_https,
       created_at: x.created_at
     };
   })
