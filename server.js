@@ -24,13 +24,16 @@ expressWs(app);
 //
 app.use(logger(process.env.NODE_ENV || 'dev'));
 
-// add redis client
-// app.use((req, res, next) => {
-//   req._redis = redisClient;
-//   next();
-// });
+// cors BS
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET");
+  res.setHeader("Access-Control-Allow-Origin", process.env.CORS_ALLOW_ORIGIN || "*");
+  res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.setHeader("Access-Control-Allow-Credentials", true);
+  next();
+});
 
-// add twitter client
+// twitter client
 app.use((req, res, next) => {
   req.twitterClient = twitterClient;
   next();

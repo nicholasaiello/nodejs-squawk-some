@@ -42,6 +42,10 @@ const _getSearchTweets = (req, params) => {
     })
 };
 
+// CORS
+router.options('/', (req, res) => {
+  res.send(200);
+});
 
 router.get('/', (req, res) => {
 
