@@ -25,6 +25,7 @@ const _buildSearchParams = (req) => (
     q: req.query.q || 'foo',
     result_type: 'recent',
     count: 20,
+    lang: 'en',
     since_id: req.query.since || 0
   }
 );
@@ -39,7 +40,7 @@ const _getSearchTweets = (req, params) => {
         },
         statuses: _parseStatuses(response.statuses)
       }
-    })
+    });
 };
 
 // CORS
