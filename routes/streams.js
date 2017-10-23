@@ -22,15 +22,20 @@ const _parseError = (error) => (
 
 const _buildSearchParams = (req) => (
   {
-    q: req.query.q || 'foo',
+    q: req.query.q,
     result_type: 'recent',
-    count: 20,
+    count: 25,
     lang: 'en',
     since_id: req.query.since || 0
   }
 );
 
 const _getSearchTweets = (req, params) => {
+  const q = req.query.q;
+  if (!q || q in ['0', 'null', 'undefined']) {
+    return Promise.resolve([]);
+  }
+
   return req.twitterClient.get('search/tweets', params)
     .then(response => {
       return {
