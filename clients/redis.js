@@ -1,3 +1,7 @@
+/**
+ * KISS Redis Client for Node.js
+ * Get/Set/SetEx with Promises
+ */
 redis = require('redis');
 
 const init = (redisUrl) => {
