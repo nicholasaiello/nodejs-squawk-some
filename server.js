@@ -2,17 +2,14 @@
 
 const express = require('express'),
   expressWs = require('express-ws'),
-  redis = require('redis'),
   path = require('path'),
   logger = require('morgan');
-
-const twitterClient = require('./clients/twitter');
 
 const PORT = process.env.PORT || 8080,
   HOST = process.env.HOST_NAME || '0.0.0.0';
 
-// TODO
-// const redisClient = redis.createClient(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
+const twitterClient = require('./clients/twitter'),
+  redisClient = require('./clients/redis');
 
 const app = express();
 expressWs(app);
@@ -36,6 +33,12 @@ app.use((req, res, next) => {
 // twitter client
 app.use((req, res, next) => {
   req.twitterClient = twitterClient;
+  next();
+});
+
+// redis client
+app.use((req, res, next) => {
+  req.redisClient = redisClient;
   next();
 });
 

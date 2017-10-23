@@ -3,6 +3,30 @@ const router = express.Router();
 
 const fetch = require('node-fetch');
 
+/**
+ * TODO break this up
+ */
+
+/**
+ * Cache Utils
+ */
+
+const _buildCacheKey = (...params) => (
+  params.join(':').toLowerCase().replace(/\s/, '-')
+);
+
+const _getCache = (req, key) => (
+  req.redisClient.getCache(key)
+);
+
+const _setCache = (req, key, obj, ttl = 60) => (
+  req.redisClient.setCache(key, obj, ttl)
+);
+
+/**
+ * API Utils
+ */
+
 const _parseStatuses = (statuses) => (
   statuses.map(x => {
     return {
@@ -20,33 +44,58 @@ const _parseError = (error) => (
   error[0].message || ''
 );
 
-const _buildSearchParams = (req) => (
-  {
-    q: req.query.q,
-    result_type: 'recent',
-    count: 25,
-    lang: 'en',
-    since_id: req.query.since || 0
-  }
-);
+const _buildSearchParams = ({ q, limit, since }) => ({
+  q: q,
+  result_type: 'recent',
+  count: limit || 25,
+  lang: 'en',
+  since_id: since || 0
+});
 
-const _getSearchTweets = (req, params) => {
-  const q = req.query.q;
-  if (!q || q in ['0', 'null', 'undefined']) {
+const _getSearchTweets = async (req) => {
+  const { q, since } = req.query;
+  // TODO better validation
+  // validate query
+  if (!(/^[\w\$\@\#\+\s]{1,16}$/.test(q)) || q in ['0', 'null', 'undefined']) {
     return Promise.resolve([]);
   }
 
+  // check for cached result (must have since_id)
+  if (since && since !== '0') {
+    const result = await _getCache(req, _buildCacheKey(q, since));
+    if (result) {
+      return Promise.resolve(result);
+    }
+  }
+
+  // request data from twitter
+  const params = _buildSearchParams(req.query);
   return req.twitterClient.get('search/tweets', params)
     .then(response => {
-      return {
+      const { count, since_id } = response.search_metadata;
+      const results = {
         meta: {
-          count: response.search_metadata.count,
-          since_id: response.search_metadata.since_id
+          count: count,
+          since_id: since_id
         },
         statuses: _parseStatuses(response.statuses)
+      };
+
+      // cache result if valid
+      if (since_id) {
+        // decrease ttl for empty results
+        const ttl = !results.statuses.length ? 30 : 60,
+          key = _buildCacheKey(q, since_id);
+        _setCache(req, key, results, ttl);
       }
+
+      return results;
     });
 };
+
+/**
+ * Routes
+ */
 
 // CORS
 router.options('/', (req, res) => {
@@ -55,7 +104,7 @@ router.options('/', (req, res) => {
 
 router.get('/', (req, res) => {
 
-  _getSearchTweets(req, _buildSearchParams(req))
+  _getSearchTweets(req)
     .then(results => {
       res.send({results: results});
     })
@@ -68,7 +117,7 @@ router.get('/', (req, res) => {
 
 router.ws('/', (ws, req) => {
 
-  _getSearchTweets(req, _buildSearchParams(req))
+  _getSearchTweets(req)
     .then(results => {
       ws.send(JSON.stringify({results: results}));
     })
