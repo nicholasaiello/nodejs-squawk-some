@@ -46,7 +46,7 @@ const _parseError = (error) => (
 const _buildSearchParams = ({ q, limit, since }) => ({
   q: q,
   result_type: 'recent',
-  count: limit || 25,
+  count: limit || 50,
   lang: 'en',
   since_id: since || 0
 });
