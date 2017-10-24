@@ -56,6 +56,7 @@ const _parseStockMeta = (results, func = 'TIME_SERIES_DAILY', interval = '1min')
     refreshed,
     tz: meta['6. Time Zone'],
     price: results[seriesKey][dateKey]['4. close'],
+    open: results[seriesKey][dateKey]['1. open'],
     volume: results[seriesKey][dateKey]['5. volume']
   };
 };
@@ -63,7 +64,7 @@ const _parseStockMeta = (results, func = 'TIME_SERIES_DAILY', interval = '1min')
 const _fetchStockQuote = async (req) => {
   const s = req.query.s.toLowerCase(),
     result = await req.redisClient.getCache(s);
-    
+
   if (_isResultValid(result)) {
     return Promise.resolve(_parseStockMeta(result.current));
   }
@@ -79,7 +80,7 @@ const _fetchStockQuote = async (req) => {
       last: result || null
     };
 
-    req.redisClient.setCache(s, obj, 120);
+    req.redisClient.setCache(s, obj, 60 * 5);
     return obj.current;
   })
   .then(obj => _parseStockMeta(obj))
@@ -89,6 +90,11 @@ const _fetchStockQuote = async (req) => {
 /**
  * Routes
  */
+
+// CORS
+router.options('/stocks/', (req, res) => {
+  res.send(200);
+});
 
 router.get('/stocks/', (req, res) => {
   _fetchStockQuote(req)
