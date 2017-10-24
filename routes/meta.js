@@ -2,26 +2,40 @@ const express = require('express');
 const router = express.Router();
 const fetch = require('node-fetch');
 
+// TODO make a client
 const AV_API_URL = "https://www.alphavantage.co/query",
   AV_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
+
+// FIXME
+const TIME_SERIES_MAP = {
+  TIME_SERIES_INTRADAY: (interval) => (`Time Series (${interval})`),
+  TIME_SERIES_DAILY: () => ('Time Series (Daily)')
+};
 
 /**
  * Util methods
  */
 
-// FIXME
-const TIME_SERIES_MAP = {
-  TIME_SERIES_INTRADAY: (interval) => (`Time Series (${interval})`),
-  TIME_SERIES_DAILY: 'Time Series (Daily)'
-};
-
 /**
  * Validate object and determine freshness
  */
 const _isResultValid = (result) => {
-  if (!result) {
+  if (!result || !result.current) {
     return false;
   }
+
+  // compare last and current date/prices
+  // see if we're in weekend/off-hours (offset to Eastern Time)
+
+  const now = new Date();
+  if (now.getUTCDay() in [0,6]) {
+    return true;
+  }
+
+  const { current, last } = result;
+
+  // if prices are similar, and refreshed is close to NOW,
+  // don't force a refresh
 
   return false;
 };
@@ -30,42 +44,48 @@ const _buildApiUrl = ({s, func = 'TIME_SERIES_DAILY'}) => (
   `${AV_API_URL}?function=${func}&symbol=${s}&apikey=${AV_API_KEY}`
 );
 
-const _parseStockMeta = (data, func) => {
-  const meta = data['Meta Data'],
+const _parseStockMeta = (results, func = 'TIME_SERIES_DAILY', interval = '1min') => {
+  const meta = results['Meta Data'],
     refreshed = meta['3. Last Refreshed'];
 
-  const seriesKey = TIME_SERIES_MAP[func];
+  const seriesKey = TIME_SERIES_MAP[func](interval),
+    dateKey = refreshed.substr(0,10);
 
   return {
     symbol: meta['2. Symbol'],
     refreshed,
     tz: meta['6. Time Zone'],
-    price: data[seriesKey][refreshed]['4. close'],
-    volume: data[seriesKey][refreshed]['5. volume']
+    price: results[seriesKey][dateKey]['4. close'],
+    volume: results[seriesKey][dateKey]['5. volume']
   };
 };
 
 const _fetchStockQuote = async (req) => {
   const {
     s,
-    func = 'TIME_SERIES_INTRADAY',
-    interval = '1min'
+    func = 'TIME_SERIES_DAILY'
   } = req.query;
 
   const result = await req.redisClient.getCache(s);
   if (_isResultValid(result)) {
-    console.log(result)
-    return Promise.resolve(_parseStockMeta(result, func));
+    return Promise.resolve(_parseStockMeta(result.current));
   }
 
   return fetch(_buildApiUrl(req.query), {
     method: 'GET'
   })
-  .then((response) => response.json())
+  .then(response => response.json())
   .then(json => {
-    req.redisClient.setCache(s, json);
-    return _parseStockMeta(json, func);
+    // cache current, and last result for evaluation
+    const obj = {
+      current: json,
+      last: result || null
+    };
+
+    req.redisClient.setCache(s, obj, 120);
+    return obj.current;
   })
+  .then(obj => _parseStockMeta(obj))
   .catch(err => console.log('error:', err));
 };
 
