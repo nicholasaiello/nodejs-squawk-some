@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-
 const fetch = require('node-fetch');
 
 /**
@@ -98,11 +97,11 @@ const _getSearchTweets = async (req) => {
  */
 
 // CORS
-router.options('/', (req, res) => {
+router.options('/twitter/', (req, res) => {
   res.send(200);
 });
 
-router.get('/', (req, res) => {
+router.get('/twitter/', (req, res) => {
 
   _getSearchTweets(req)
     .then(results => {
@@ -115,7 +114,7 @@ router.get('/', (req, res) => {
 
 });
 
-router.ws('/', (ws, req) => {
+router.ws('/twitter/', (ws, req) => {
 
   _getSearchTweets(req)
     .then(results => {

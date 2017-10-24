@@ -51,8 +51,11 @@ app.get('/', (req, res) => (
   res.send("Hello World\n")
 ));
 
-const routes = require('./routes/streams');
-app.use('/streams', routes);
+const streamRoutes = require('./routes/streams'),
+  metaRoutes = require('./routes/meta');
+  
+app.use('/streams', streamRoutes);
+app.use('/meta', metaRoutes);
 
 // handle 404s
 app.use((req, res, next) => {
