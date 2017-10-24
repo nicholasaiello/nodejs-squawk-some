@@ -52,7 +52,7 @@ const _parseStockMeta = (results, func = 'TIME_SERIES_DAILY', interval = '1min')
     dateKey = refreshed.substr(0,10);
 
   return {
-    symbol: meta['2. Symbol'],
+    symbol: meta['2. Symbol'].toUpperCase(),
     refreshed,
     tz: meta['6. Time Zone'],
     price: results[seriesKey][dateKey]['4. close'],
@@ -61,12 +61,9 @@ const _parseStockMeta = (results, func = 'TIME_SERIES_DAILY', interval = '1min')
 };
 
 const _fetchStockQuote = async (req) => {
-  const {
-    s,
-    func = 'TIME_SERIES_DAILY'
-  } = req.query;
-
-  const result = await req.redisClient.getCache(s);
+  const s = req.query.s.toLowerCase(),
+    result = await req.redisClient.getCache(s);
+    
   if (_isResultValid(result)) {
     return Promise.resolve(_parseStockMeta(result.current));
   }
