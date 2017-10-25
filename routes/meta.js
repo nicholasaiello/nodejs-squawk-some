@@ -1,16 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const fetch = require('node-fetch');
-
-// TODO make a client
-const AV_API_URL = "https://www.alphavantage.co/query",
-  AV_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
-
-// FIXME
-const TIME_SERIES_MAP = {
-  TIME_SERIES_INTRADAY: (interval) => (`Time Series (${interval})`),
-  TIME_SERIES_DAILY: () => ('Time Series (Daily)')
-};
 
 /**
  * Util methods
@@ -37,54 +26,30 @@ const _isResultValid = (result) => {
   // if prices are similar, and refreshed is close to NOW,
   // don't force a refresh
 
-  return false;
-};
-
-const _buildApiUrl = ({s, func = 'TIME_SERIES_DAILY'}) => (
-  `${AV_API_URL}?function=${func}&symbol=${s}&apikey=${AV_API_KEY}`
-);
-
-const _parseStockMeta = (results, func = 'TIME_SERIES_DAILY', interval = '1min') => {
-  const meta = results['Meta Data'],
-    refreshed = meta['3. Last Refreshed'];
-
-  const seriesKey = TIME_SERIES_MAP[func](interval),
-    dateKey = refreshed.substr(0,10);
-
-  return {
-    symbol: meta['2. Symbol'].toUpperCase(),
-    refreshed,
-    tz: meta['6. Time Zone'],
-    price: results[seriesKey][dateKey]['4. close'],
-    open: results[seriesKey][dateKey]['1. open'],
-    volume: results[seriesKey][dateKey]['5. volume']
-  };
+  return true;
 };
 
 const _fetchStockQuote = async (req) => {
   const s = req.query.s.toLowerCase(),
-    result = await req.redisClient.getCache(s);
+    cached = await req.redisClient.getCache(s);
 
-  if (_isResultValid(result)) {
-    return Promise.resolve(_parseStockMeta(result.current));
+  if (_isResultValid(cached)) {
+    return Promise.resolve((cached.current));
   }
 
-  return fetch(_buildApiUrl(req.query), {
-    method: 'GET'
-  })
-  .then(response => response.json())
-  .then(json => {
-    // cache current, and last result for evaluation
-    const obj = {
-      current: json,
-      last: result || null
-    };
+  return req.alphaClient.series().daily(s)
+    .then(result => {
+      // cache current, and last result for evaluation
+      const obj = {
+        current: result,
+        last: cached || null
+      };
 
-    req.redisClient.setCache(s, obj, 60 * 5);
-    return obj.current;
-  })
-  .then(obj => _parseStockMeta(obj))
-  .catch(err => console.log('error:', err));
+      req.redisClient.setCache(s, obj, 60 * 5);
+      return obj;
+    })
+    .then(obj => obj.current)
+    .catch(err => console.log('error:', err));
 };
 
 /**

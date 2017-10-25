@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 8080,
   HOST = process.env.HOST_NAME || '0.0.0.0';
 
 const twitterClient = require('./clients/twitter'),
+  alphaClient = require('./clients/alphavantage'),
   redisClient = require('./clients/redis');
 
 const app = express();
@@ -36,6 +37,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// alphavantage client
+app.use((req, res, next) => {
+  req.alphaClient = alphaClient;
+  next();
+});
+
 // redis client
 app.use((req, res, next) => {
   req.redisClient = redisClient;
@@ -53,7 +60,7 @@ app.get('/', (req, res) => (
 
 const streamRoutes = require('./routes/streams'),
   metaRoutes = require('./routes/meta');
-  
+
 app.use('/streams', streamRoutes);
 app.use('/meta', metaRoutes);
 
@@ -63,7 +70,6 @@ app.use((req, res, next) => {
   err.status = 404;
   next(err);
 });
-
 
 app.listen(PORT, HOST);
 console.log(`Node server start @ ${HOST}:${PORT}`);
