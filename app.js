@@ -56,10 +56,10 @@ app.use('/streams', streamRoutes);
 app.use('/meta', metaRoutes);
 
 // handle 404s
-app.use((req, res, next) => {
-  let err = new Error('Not Found');
-  err.status = 404;
-  next(err);
-});
+// app.use((req, res, next) => {
+//   let err = new Error('Not Found');
+//   err.status = 404;
+//   next(err);
+// });
 
 module.exports = app;
